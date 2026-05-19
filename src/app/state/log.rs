@@ -1,8 +1,14 @@
 use std::collections::HashSet;
 
 use ratatui::widgets::ListState;
+use tokio::spawn;
+use tokio_stream::StreamExt;
 
-use crate::app::state::context::{App, ViewMode};
+use crate::{
+    app::state::context::{App, ViewMode},
+    models::AppInternalEvent,
+    systemd::journal::JournalManager,
+};
 
 #[derive(Default)]
 pub struct LogViewState {
@@ -12,6 +18,8 @@ pub struct LogViewState {
     pub line_block_select: bool,
     pub selected_lines: HashSet<usize>,
     pub line_marks: Vec<usize>,
+    pub is_following: bool,
+    pub follow_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl LogViewState {
@@ -92,6 +100,7 @@ impl App {
         if let Some(unit) = self.get_selected_unit() {
             let name = unit.name.clone();
             let scope = unit.scope.to_string();
+            self.stop_following_logs();
             self.search.clear();
             self.view_mode = ViewMode::LogView;
             self.log_view.logs.clear();
@@ -99,6 +108,40 @@ impl App {
             self.log_view.clear_visual_modes();
             self.fetch_unit_logs(name, scope, false).await;
         }
+    }
+
+    pub fn stop_following_logs(&mut self) {
+        if let Some(task) = self.log_view.follow_task.take() {
+            task.abort();
+        }
+        self.log_view.is_following = false;
+    }
+
+    pub async fn start_following_logs(&mut self, unit_name: String, scope: String) {
+        self.stop_following_logs();
+        self.log_view.is_following = true;
+        self.is_loading = false;
+
+        let tx = self.internal_tx.clone();
+        let handle = spawn(async move {
+            let manager = JournalManager::new();
+            match manager.follow_logs(&unit_name, &scope, 0).await {
+                Ok(mut stream) => {
+                    while let Some(line) = stream.next().await {
+                        let _ = tx.send(AppInternalEvent::LogLineReceived(line)).await;
+                    }
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(AppInternalEvent::Error(format!(
+                            "Failed to follow logs: {e}"
+                        )))
+                        .await;
+                }
+            }
+        });
+
+        self.log_view.follow_task = Some(handle);
     }
 
     pub fn clear_log_visual_modes(&mut self) {

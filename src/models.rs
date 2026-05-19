@@ -1,8 +1,8 @@
 use ratatui::style::Color;
-use strum::{Display, EnumString};
+use strum::{AsRefStr, Display, EnumString, IntoStaticStr, VariantNames};
 use zbus::zvariant::OwnedObjectPath;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UnitEditMode {
     Override,
     Full,
@@ -24,7 +24,7 @@ impl UnitEditMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct EditRequest {
     pub unit_name: String,
     pub scope: UnitScope,
@@ -34,7 +34,7 @@ pub struct EditRequest {
     pub restore_path: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct EditReview {
     pub unit_name: String,
     pub scope: UnitScope,
@@ -44,7 +44,7 @@ pub struct EditReview {
     pub restore_path: String,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UnitAction {
     Start,
     Stop,
@@ -73,7 +73,7 @@ impl UnitAction {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum PrivilegedAction {
     UnitCommand {
         unit_name: String,
@@ -99,6 +99,7 @@ pub enum AppInternalEvent {
     AuthResult(AttemptResult),
     UnitsLoaded(Vec<UnitInfo>, bool),
     LogsLoaded(Vec<String>, bool),
+    LogLineReceived(String),
     FileLoaded(String, String),
     Error(String),
     ClearNotification,
@@ -121,7 +122,7 @@ pub enum PendingAction {
     EditText { filename: String, content: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct UnitInfo {
     pub name: String,
     pub description: String,
@@ -134,7 +135,21 @@ pub struct UnitInfo {
     pub fragment_path: String,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Display, EnumString)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Display,
+    EnumString,
+    AsRefStr,
+    IntoStaticStr,
+    VariantNames,
+)]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnitType {
     Unknown,
@@ -152,50 +167,17 @@ pub enum UnitType {
 }
 
 impl UnitType {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Unknown => "unknown",
-            Self::Service => "service",
-            Self::Socket => "socket",
-            Self::Target => "target",
-            Self::Device => "device",
-            Self::Mount => "mount",
-            Self::Automount => "automount",
-            Self::Timer => "timer",
-            Self::Path => "path",
-            Self::Slice => "slice",
-            Self::Scope => "scope",
-            Self::Swap => "swap",
-        }
-    }
-
-    pub fn from_str(value: &str) -> Self {
-        match value {
-            "unknown" => Self::Unknown,
-            "service" => Self::Service,
-            "socket" => Self::Socket,
-            "target" => Self::Target,
-            "device" => Self::Device,
-            "mount" => Self::Mount,
-            "automount" => Self::Automount,
-            "timer" => Self::Timer,
-            "path" => Self::Path,
-            "slice" => Self::Slice,
-            "scope" => Self::Scope,
-            "swap" => Self::Swap,
-            _ => Self::Unknown,
-        }
-    }
-
     pub fn from_unit_name(unit_name: &str) -> Self {
         unit_name
             .rsplit_once('.')
-            .map_or(Self::Unknown, |(_, suffix)| Self::from_str(suffix))
+            .map_or(Self::Unknown, |(_, suffix)| {
+                suffix.parse().unwrap_or(Self::Unknown)
+            })
     }
 
     pub fn color(self) -> Color {
         match self {
-            Self::Unknown => Color::DarkGray,
+            Self::Unknown => Color::Gray,
             Self::Service => Color::Green,
             Self::Socket => Color::Cyan,
             Self::Target => Color::Yellow,
@@ -212,7 +194,20 @@ impl UnitType {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Default, Display, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Default,
+    Display,
+    EnumString,
+    AsRefStr,
+    IntoStaticStr,
+    VariantNames,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnitScope {
@@ -222,13 +217,6 @@ pub enum UnitScope {
 }
 
 impl UnitScope {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Global => "global",
-            Self::Session => "session",
-        }
-    }
-
     pub fn color(self) -> Color {
         match self {
             Self::Global => Color::Blue,
@@ -238,7 +226,20 @@ impl UnitScope {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Default, Display, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Default,
+    Display,
+    EnumString,
+    AsRefStr,
+    IntoStaticStr,
+    VariantNames,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnitLoadState {
@@ -254,19 +255,6 @@ pub enum UnitLoadState {
 }
 
 impl UnitLoadState {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Loaded => "loaded",
-            Self::NotFound => "not-found",
-            Self::BadSetting => "bad-setting",
-            Self::Error => "error",
-            Self::Masked => "masked",
-            Self::Merged => "merged",
-            Self::Stub => "stub",
-            Self::Unknown => "unknown",
-        }
-    }
-
     pub fn color(self) -> Color {
         match self {
             Self::Loaded => Color::Green,
@@ -278,7 +266,20 @@ impl UnitLoadState {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Default, Display, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Default,
+    Display,
+    EnumString,
+    AsRefStr,
+    IntoStaticStr,
+    VariantNames,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnitActiveState {
@@ -294,24 +295,11 @@ pub enum UnitActiveState {
 }
 
 impl UnitActiveState {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Active => "active",
-            Self::Inactive => "inactive",
-            Self::Failed => "failed",
-            Self::Activating => "activating",
-            Self::Deactivating => "deactivating",
-            Self::Maintenance => "maintenance",
-            Self::Reloading => "reloading",
-            Self::Unknown => "unknown",
-        }
-    }
-
     pub fn color(self) -> Color {
         match self {
             Self::Active => Color::Green,
             Self::Failed => Color::Red,
-            Self::Inactive => Color::DarkGray,
+            Self::Inactive => Color::Gray,
             Self::Activating | Self::Reloading => Color::Yellow,
             Self::Deactivating => Color::LightYellow,
             Self::Maintenance => Color::Magenta,
@@ -321,7 +309,20 @@ impl UnitActiveState {
 }
 
 #[derive(
-    Debug, Clone, Copy, Eq, PartialEq, Hash, Ord, PartialOrd, Default, Display, EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Hash,
+    Ord,
+    PartialOrd,
+    Default,
+    Display,
+    EnumString,
+    AsRefStr,
+    IntoStaticStr,
+    VariantNames,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum UnitEnablementState {
@@ -344,26 +345,6 @@ pub enum UnitEnablementState {
 }
 
 impl UnitEnablementState {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Enabled => "enabled",
-            Self::EnabledRuntime => "enabled-runtime",
-            Self::Linked => "linked",
-            Self::LinkedRuntime => "linked-runtime",
-            Self::Masked => "masked",
-            Self::MaskedRuntime => "masked-runtime",
-            Self::Static => "static",
-            Self::Disabled => "disabled",
-            Self::DisabledRuntime => "disabled-runtime",
-            Self::Invalid => "invalid",
-            Self::Indirect => "indirect",
-            Self::Alias => "alias",
-            Self::Generated => "generated",
-            Self::Transient => "transient",
-            Self::Unknown => "unknown",
-        }
-    }
-
     pub fn color(self) -> Color {
         match self {
             Self::Enabled | Self::EnabledRuntime => Color::Green,
@@ -373,7 +354,7 @@ impl UnitEnablementState {
             | Self::Indirect
             | Self::Linked
             | Self::LinkedRuntime => Color::Cyan,
-            Self::Disabled | Self::DisabledRuntime => Color::DarkGray,
+            Self::Disabled | Self::DisabledRuntime => Color::Gray,
             Self::Masked | Self::MaskedRuntime | Self::Invalid => Color::Red,
             Self::Transient | Self::Unknown => Color::Yellow,
         }
@@ -402,12 +383,14 @@ mod tests {
         ];
 
         for (unit_type, label) in cases {
-            assert_eq!(unit_type.as_str(), label);
-            assert_eq!(UnitType::from_str(label), unit_type);
+            assert_eq!(unit_type.as_ref(), label);
             assert_eq!(label.parse::<UnitType>().unwrap(), unit_type);
         }
 
-        assert_eq!(UnitType::from_str("weird"), UnitType::Unknown);
+        assert_eq!(
+            "weird".parse::<UnitType>().unwrap_or(UnitType::Unknown),
+            UnitType::Unknown
+        );
         assert_eq!(UnitType::from_unit_name("ssh"), UnitType::Unknown);
         assert_eq!(UnitType::from_unit_name("ssh.weird"), UnitType::Unknown);
         assert_eq!(
@@ -418,11 +401,11 @@ mod tests {
 
     #[test]
     fn state_labels_include_unknown_fallbacks() {
-        assert_eq!(UnitLoadState::Unknown.as_str(), "unknown");
+        assert_eq!(UnitLoadState::Unknown.as_ref(), "unknown");
         assert_eq!(UnitLoadState::Unknown.color(), Color::White);
-        assert_eq!(UnitActiveState::Unknown.as_str(), "unknown");
+        assert_eq!(UnitActiveState::Unknown.as_ref(), "unknown");
         assert_eq!(UnitActiveState::Unknown.color(), Color::White);
-        assert_eq!(UnitEnablementState::Unknown.as_str(), "unknown");
+        assert_eq!(UnitEnablementState::Unknown.as_ref(), "unknown");
         assert_eq!(UnitEnablementState::Unknown.color(), Color::Yellow);
     }
 }

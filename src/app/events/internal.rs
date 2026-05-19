@@ -32,6 +32,15 @@ impl App {
                     );
                 }
             }
+            AppInternalEvent::LogLineReceived(line) => {
+                self.log_view.logs.push(line);
+                self.is_loading = false;
+                if self.log_view.is_following {
+                    self.log_view
+                        .state
+                        .select(Some(self.log_view.logs.len().saturating_sub(1)));
+                }
+            }
             AppInternalEvent::FileLoaded(content, path) => {
                 self.file_view.content = content;
                 self.file_view.path = path;

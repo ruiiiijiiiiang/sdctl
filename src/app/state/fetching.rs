@@ -18,7 +18,9 @@ impl App {
         spawn(async move {
             match fetch_all_units().await {
                 Ok(units) => {
-                    let _ = tx.send(AppInternalEvent::UnitsLoaded(units, is_manual)).await;
+                    let _ = tx
+                        .send(AppInternalEvent::UnitsLoaded(units, is_manual))
+                        .await;
                 }
                 Err(e) => {
                     let _ = tx
@@ -53,7 +55,7 @@ impl App {
         self.is_loading = true;
         let tx = self.internal_tx.clone();
         spawn(async move {
-            match get_unit_fragment_path(&unit.path, &unit.scope.to_string()).await {
+            match get_unit_fragment_path(&unit.path, unit.scope.as_ref()).await {
                 Ok(path) => {
                     if path.is_empty() || path == "/dev/null" {
                         let _ = tx

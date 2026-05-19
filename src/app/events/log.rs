@@ -87,17 +87,22 @@ impl App {
 
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
+                self.stop_following_logs();
                 self.enter_unit_list_view();
                 return false;
             }
-            KeyCode::Char('v') if !self.log_view.logs.is_empty() => {
+            KeyCode::Char('v')
+                if !self.log_view.logs.is_empty() && !self.log_view.is_following =>
+            {
                 self.log_view.line_select = true;
                 if self.log_view.state.selected().is_none() {
                     self.log_view.state.select(Some(0));
                 }
                 return false;
             }
-            KeyCode::Char('V') if !self.log_view.logs.is_empty() => {
+            KeyCode::Char('V')
+                if !self.log_view.logs.is_empty() && !self.log_view.is_following =>
+            {
                 self.log_view.line_block_select = true;
                 self.log_view.line_marks.clear();
                 if self.log_view.state.selected().is_none() {
@@ -108,6 +113,16 @@ impl App {
             KeyCode::Char('v') | KeyCode::Char('V') => {}
             KeyCode::Char('/') if !self.log_view.logs.is_empty() => {
                 self.start_search();
+                return false;
+            }
+            KeyCode::Char('f') => {
+                if self.log_view.is_following {
+                    self.stop_following_logs();
+                } else if let Some(unit) = self.get_selected_unit() {
+                    let name = unit.name.clone();
+                    let scope = unit.scope.to_string();
+                    self.start_following_logs(name, scope).await;
+                }
                 return false;
             }
             KeyCode::Char('n') if !self.search.query.is_empty() => {
@@ -125,7 +140,10 @@ impl App {
                 });
                 return true;
             }
-            KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('r')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && !self.log_view.is_following =>
+            {
                 if let Some(unit) = self.get_selected_unit() {
                     let name = unit.name.clone();
                     let scope = unit.scope.to_string();

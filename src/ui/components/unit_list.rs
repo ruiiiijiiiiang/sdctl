@@ -78,11 +78,11 @@ fn format_unit_row(
             Style::default().bold(),
         ),
         Span::styled(
-            format_cell(unit_type.as_str(), widths[1], CellAlign::Center),
+            format_cell(unit_type.as_ref(), widths[1], CellAlign::Center),
             Style::default().fg(unit_type.color()),
         ),
         Span::styled(
-            format_cell(unit.scope.as_str(), widths[2], CellAlign::Center),
+            format_cell(unit.scope.as_ref(), widths[2], CellAlign::Center),
             Style::default().fg(unit.scope.color()),
         ),
         Span::styled(
@@ -90,18 +90,18 @@ fn format_unit_row(
             Style::default().fg(unit.active_state.color()),
         ),
         Span::styled(
-            format_cell(unit.enablement_state.as_str(), widths[4], CellAlign::Center),
+            format_cell(unit.enablement_state.as_ref(), widths[4], CellAlign::Center),
             Style::default().fg(unit.enablement_state.color()),
         ),
         Span::styled(
-            format_cell(unit.load_state.as_str(), widths[5], CellAlign::Center),
+            format_cell(unit.load_state.as_ref(), widths[5], CellAlign::Center),
             Style::default().fg(unit.load_state.color()),
         ),
     ])];
 
     if is_selected {
         let detail = Line::from(vec![
-            Span::raw(" ╟  "),
+            Span::raw(" ┣  "),
             Span::styled("Description: ", Style::default().bold()),
             Span::styled(unit.description.clone(), Style::default().fg(Color::White)),
             Span::styled("   Unit file path: ", Style::default().bold()),
@@ -154,11 +154,11 @@ fn format_unit_row(
         ];
 
         let mut actions_spans = vec![
-            Span::raw(" ╙  "),
+            Span::raw(" ┗  "),
             Span::styled("Action: ", Style::default().bold()),
         ];
 
-        let prefix_len = " ╙  Action: ".len();
+        let prefix_len = " ┗  Action: ".len();
         actions_spans.extend(format_spans_cell(
             actions_col0,
             widths[0].saturating_sub(prefix_len),
@@ -353,7 +353,7 @@ mod tests {
 
         assert_eq!(lines.len(), 3);
         assert!(lines[0].spans[1].content.contains("service"));
-        assert!(lines[1].spans[0].content.starts_with(" ╟ "));
+        assert!(lines[1].spans[0].content.starts_with(" ┣ "));
         assert!(
             lines[1]
                 .spans
@@ -366,7 +366,7 @@ mod tests {
                 .iter()
                 .any(|span| span.content.contains("/etc/systemd/system/ssh.service"))
         );
-        assert!(lines[2].spans[0].content.starts_with(" ╙ "));
+        assert!(lines[2].spans[0].content.starts_with(" ┗ "));
         assert!(lines[2].spans.iter().any(|span| span.content == "Action: "));
     }
 

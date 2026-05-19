@@ -1,65 +1,19 @@
 use std::collections::{BTreeSet, HashSet};
+use strum::VariantNames;
 
 use crate::{
     app::state::context::{App, FilterMenu, FilterMenuOption, UnitSelectionKey},
     models::{UnitActiveState, UnitEnablementState, UnitInfo, UnitLoadState, UnitScope, UnitType},
 };
 
-const TYPE_ORDER: &[&str] = &[
-    UnitType::Service.as_str(),
-    UnitType::Socket.as_str(),
-    UnitType::Target.as_str(),
-    UnitType::Device.as_str(),
-    UnitType::Mount.as_str(),
-    UnitType::Automount.as_str(),
-    UnitType::Timer.as_str(),
-    UnitType::Path.as_str(),
-    UnitType::Slice.as_str(),
-    UnitType::Scope.as_str(),
-    UnitType::Swap.as_str(),
-];
-const SCOPE_ORDER: &[&str] = &[UnitScope::Global.as_str(), UnitScope::Session.as_str()];
-const ACTIVE_ORDER: &[&str] = &[
-    UnitActiveState::Active.as_str(),
-    UnitActiveState::Inactive.as_str(),
-    UnitActiveState::Failed.as_str(),
-    UnitActiveState::Activating.as_str(),
-    UnitActiveState::Deactivating.as_str(),
-    UnitActiveState::Maintenance.as_str(),
-    UnitActiveState::Reloading.as_str(),
-];
-const ENABLEMENT_ORDER: &[&str] = &[
-    UnitEnablementState::Enabled.as_str(),
-    UnitEnablementState::EnabledRuntime.as_str(),
-    UnitEnablementState::Linked.as_str(),
-    UnitEnablementState::LinkedRuntime.as_str(),
-    UnitEnablementState::Masked.as_str(),
-    UnitEnablementState::MaskedRuntime.as_str(),
-    UnitEnablementState::Static.as_str(),
-    UnitEnablementState::Disabled.as_str(),
-    UnitEnablementState::Invalid.as_str(),
-    UnitEnablementState::Indirect.as_str(),
-    UnitEnablementState::Alias.as_str(),
-    UnitEnablementState::Generated.as_str(),
-    UnitEnablementState::Transient.as_str(),
-    UnitEnablementState::Unknown.as_str(),
-];
-const LOAD_ORDER: &[&str] = &[
-    UnitLoadState::Loaded.as_str(),
-    UnitLoadState::NotFound.as_str(),
-    UnitLoadState::BadSetting.as_str(),
-    UnitLoadState::Error.as_str(),
-    UnitLoadState::Masked.as_str(),
-];
-
 impl FilterMenu {
     pub fn unit_value(self, unit: &UnitInfo) -> String {
         match self {
-            Self::Type => UnitType::from_unit_name(&unit.name).as_str().to_string(),
-            Self::Scope => unit.scope.as_str().to_string(),
-            Self::Active => unit.active_state.as_str().to_string(),
-            Self::Enablement => unit.enablement_state.as_str().to_string(),
-            Self::Load => unit.load_state.as_str().to_string(),
+            Self::Type => UnitType::from_unit_name(&unit.name).as_ref().to_string(),
+            Self::Scope => unit.scope.as_ref().to_string(),
+            Self::Active => unit.active_state.as_ref().to_string(),
+            Self::Enablement => unit.enablement_state.as_ref().to_string(),
+            Self::Load => unit.load_state.as_ref().to_string(),
         }
     }
 
@@ -69,19 +23,19 @@ impl FilterMenu {
             Self::Scope => app
                 .unit_list
                 .scope_filter
-                .map(|value| value.as_str().to_string()),
+                .map(|value| value.as_ref().to_string()),
             Self::Active => app
                 .unit_list
                 .active_filter
-                .map(|value| value.as_str().to_string()),
+                .map(|value| value.as_ref().to_string()),
             Self::Enablement => app
                 .unit_list
                 .enablement_filter
-                .map(|value| value.as_str().to_string()),
+                .map(|value| value.as_ref().to_string()),
             Self::Load => app
                 .unit_list
                 .load_filter
-                .map(|value| value.as_str().to_string()),
+                .map(|value| value.as_ref().to_string()),
         }
     }
 
@@ -108,11 +62,11 @@ impl FilterMenu {
 
     pub fn preferred_order(self) -> &'static [&'static str] {
         match self {
-            Self::Type => TYPE_ORDER,
-            Self::Scope => SCOPE_ORDER,
-            Self::Active => ACTIVE_ORDER,
-            Self::Enablement => ENABLEMENT_ORDER,
-            Self::Load => LOAD_ORDER,
+            Self::Type => UnitType::VARIANTS,
+            Self::Scope => UnitScope::VARIANTS,
+            Self::Active => UnitActiveState::VARIANTS,
+            Self::Enablement => UnitEnablementState::VARIANTS,
+            Self::Load => UnitLoadState::VARIANTS,
         }
     }
 
@@ -288,7 +242,7 @@ impl App {
                 .iter()
                 .filter(|u| {
                     self.unit_matches_scope_for_menu(u, menu)
-                        && menu.unit_value(u) == label.as_str()
+                        && menu.unit_value(u) == *label
                 })
                 .count();
 
@@ -307,7 +261,7 @@ impl App {
     pub fn unit_matches_state_filters(&self, unit: &UnitInfo) -> bool {
         Self::matches_filter_value(
             self.unit_list.type_filter.as_deref(),
-            UnitType::from_unit_name(&unit.name).as_str(),
+            UnitType::from_unit_name(&unit.name).as_ref(),
         ) && (self.unit_list.scope_filter.is_none()
             || self.unit_list.scope_filter == Some(unit.scope))
             && (self.unit_list.active_filter.is_none()
@@ -323,7 +277,7 @@ impl App {
             && (menu == FilterMenu::Type
                 || Self::matches_filter_value(
                     self.unit_list.type_filter.as_deref(),
-                    UnitType::from_unit_name(&unit.name).as_str(),
+                    UnitType::from_unit_name(&unit.name).as_ref(),
                 ))
             && (menu == FilterMenu::Scope
                 || self.unit_list.scope_filter.is_none()
@@ -442,7 +396,7 @@ mod tests {
         app.unit_list
             .filtered_indices
             .iter()
-            .map(|&index| app.unit_list.units[index].name.as_str())
+            .map(|&index| app.unit_list.units[index].name.as_ref())
             .collect()
     }
 

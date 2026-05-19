@@ -93,12 +93,12 @@ This is why I built `sdctl` with a completely different security model: the app 
 
 ## Tech Stack
 
-- **UI Framework:** [ratatui](https://github.com/ratatui/ratatui)
-- **Asynchronous Runtime:** [tokio](https://github.com/tokio-rs/tokio)
-- **D-Bus Communication:** [zbus](https://github.com/dbus2/zbus)
-- **Privilege Escalation:** `pkttyagent` managed via [portable-pty](https://github.com/wez/wezterm/tree/main/pty)
-- **Highlighting:** [tailspin](https://github.com/bensadeh/tailspin)
-- **Fuzzy Matching:** [nucleo](https://github.com/helix-editor/nucleo)
+- **UI Framework**: [ratatui](https://github.com/ratatui/ratatui)
+- **Asynchronous Runtime**: [tokio](https://github.com/tokio-rs/tokio)
+- **D-Bus Communication**: [zbus](https://github.com/dbus2/zbus)
+- **Privilege Escalation**: `pkttyagent` managed via [portable-pty](https://github.com/wez/wezterm/tree/main/pty)
+- **Highlighting**: [tailspin](https://github.com/bensadeh/tailspin)
+- **Fuzzy Matching**: [nucleo](https://github.com/helix-editor/nucleo)
 
 ## Prerequisites
 

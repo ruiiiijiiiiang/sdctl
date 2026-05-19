@@ -138,21 +138,29 @@ fn log_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<L
         );
     }
 
-    let mut action = vec![shortcut("Ctrl+r", "Refresh"), shortcut("/", "Search")];
+    let mut action = vec![];
+    if app.log_view.is_following {
+        action.push(shortcut("f", "Stop following"));
+        action.push(shortcut("/", "Search"));
+    } else {
+        action.push(shortcut("Ctrl+r", "Refresh"));
+        action.push(shortcut("f", "Following"));
+        action.push(shortcut("/", "Search"));
+    }
+
     if !app.search.query.is_empty() {
         action.push(shortcut("n/N", "Next/prev"));
     }
 
-    (
-        nav_shortcuts(),
-        action,
-        vec![
-            shortcut("v", "Select lines"),
-            shortcut("V", "Select line blocks"),
-            shortcut("e", "Open in editor"),
-            shortcut("Esc/q", "Back"),
-        ],
-    )
+    let mut external = vec![];
+    if !app.log_view.is_following {
+        external.push(shortcut("v", "Select lines"));
+        external.push(shortcut("V", "Select line blocks"));
+    }
+    external.push(shortcut("e", "Open in editor"));
+    external.push(shortcut("Esc/q", "Back"));
+
+    (nav_shortcuts(), action, external)
 }
 
 fn file_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<Line<'static>>) {

@@ -208,23 +208,23 @@ fn selected_unit_segment_spec(app: &App, menu: FilterMenu) -> SegmentSpec {
 
     let (value, value_style) = match menu {
         FilterMenu::Type => (
-            unit_type.as_str().to_string(),
+            unit_type.as_ref().to_string(),
             Style::default().fg(unit_type.color()),
         ),
         FilterMenu::Scope => (
-            unit.scope.as_str().to_string(),
+            unit.scope.as_ref().to_string(),
             Style::default().fg(unit.scope.color()),
         ),
         FilterMenu::Active => (
-            format!("{} ({})", unit.active_state.as_str(), unit.sub_state),
+            format!("{} ({})", unit.active_state.as_ref(), unit.sub_state),
             Style::default().fg(unit.active_state.color()),
         ),
         FilterMenu::Enablement => (
-            unit.enablement_state.as_str().to_string(),
+            unit.enablement_state.as_ref().to_string(),
             Style::default().fg(unit.enablement_state.color()),
         ),
         FilterMenu::Load => (
-            unit.load_state.as_str().to_string(),
+            unit.load_state.as_ref().to_string(),
             Style::default().fg(unit.load_state.color()),
         ),
     };

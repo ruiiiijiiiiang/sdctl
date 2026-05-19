@@ -32,7 +32,7 @@ pub struct UnitRow {
     pub _job_path: OwnedObjectPath,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct EnablementInfo {
     pub path: String,
     pub state: String,
