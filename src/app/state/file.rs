@@ -1,4 +1,12 @@
-use crate::app::state::context::{App, ViewMode};
+use std::fs;
+
+use tokio::spawn;
+
+use crate::{
+    app::state::context::{App, ViewMode},
+    models::{AppInternalEvent, UnitInfo},
+    systemd::dbus::get_unit_fragment_path,
+};
 
 #[derive(Default)]
 pub struct FileViewState {
@@ -27,6 +35,44 @@ impl App {
             self.file_view.scroll = 0;
             self.fetch_unit_file(unit_clone).await;
         }
+    }
+
+    pub async fn fetch_unit_file(&mut self, unit: UnitInfo) {
+        self.is_loading = true;
+        let tx = self.internal_tx.clone();
+        spawn(async move {
+            match get_unit_fragment_path(&unit.path, unit.scope.as_ref()).await {
+                Ok(path) => {
+                    if path.is_empty() || path == "/dev/null" {
+                        let _ = tx
+                            .send(AppInternalEvent::Error(
+                                "Unit file not found (masked or transient)".to_string(),
+                            ))
+                            .await;
+                        return;
+                    }
+                    match fs::read_to_string(&path) {
+                        Ok(content) => {
+                            let _ = tx.send(AppInternalEvent::FileLoaded(content, path)).await;
+                        }
+                        Err(e) => {
+                            let _ = tx
+                                .send(AppInternalEvent::Error(format!(
+                                    "Failed to read unit file: {e}"
+                                )))
+                                .await;
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(AppInternalEvent::Error(format!(
+                            "Failed to get unit path: {e}"
+                        )))
+                        .await;
+                }
+            }
+        });
     }
 
     pub fn file_search_matches(&self) -> Vec<usize> {

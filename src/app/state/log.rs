@@ -5,7 +5,10 @@ use tokio::spawn;
 use tokio_stream::StreamExt;
 
 use crate::{
-    app::state::context::{App, ViewMode},
+    app::{
+        state::context::{App, ViewMode},
+        utils::LOG_LINE_LIMIT,
+    },
     models::AppInternalEvent,
     systemd::journal::JournalManager,
 };
@@ -110,11 +113,22 @@ impl App {
         }
     }
 
-    pub fn stop_following_logs(&mut self) {
-        if let Some(task) = self.log_view.follow_task.take() {
-            task.abort();
-        }
-        self.log_view.is_following = false;
+    pub async fn fetch_unit_logs(&mut self, unit_name: String, scope: String, is_manual: bool) {
+        self.is_loading = true;
+        let tx = self.internal_tx.clone();
+        spawn(async move {
+            let manager = JournalManager::new();
+            match manager.fetch_logs(&unit_name, &scope, LOG_LINE_LIMIT).await {
+                Ok(logs) => {
+                    let _ = tx.send(AppInternalEvent::LogsLoaded(logs, is_manual)).await;
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(AppInternalEvent::Error(format!("Failed to load logs: {e}")))
+                        .await;
+                }
+            }
+        });
     }
 
     pub async fn start_following_logs(&mut self, unit_name: String, scope: String) {
@@ -142,6 +156,13 @@ impl App {
         });
 
         self.log_view.follow_task = Some(handle);
+    }
+
+    pub fn stop_following_logs(&mut self) {
+        if let Some(task) = self.log_view.follow_task.take() {
+            task.abort();
+        }
+        self.log_view.is_following = false;
     }
 
     pub fn clear_log_visual_modes(&mut self) {

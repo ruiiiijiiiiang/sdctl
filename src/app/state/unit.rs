@@ -1,6 +1,7 @@
 use std::io::Result;
 
 use ratatui::widgets::ListState;
+use tokio::spawn;
 
 use crate::{
     app::{
@@ -8,9 +9,10 @@ use crate::{
         utils::build_override_template,
     },
     models::{
-        EditRequest, EditReview, PrivilegedAction, UnitAction, UnitActiveState, UnitEditMode,
-        UnitEnablementState, UnitInfo, UnitLoadState, UnitScope,
+        AppInternalEvent, EditRequest, EditReview, PrivilegedAction, UnitAction, UnitActiveState,
+        UnitEditMode, UnitEnablementState, UnitInfo, UnitLoadState, UnitScope,
     },
+    systemd::dbus::fetch_all_units,
 };
 
 #[derive(Default)]
@@ -68,6 +70,27 @@ impl App {
         self.search.clear();
         self.log_view.clear_visual_modes();
         self.file_view.search_match = None;
+    }
+
+    pub async fn refresh_units(&mut self, is_manual: bool) {
+        self.is_loading = true;
+        let tx = self.internal_tx.clone();
+        spawn(async move {
+            match fetch_all_units().await {
+                Ok(units) => {
+                    let _ = tx
+                        .send(AppInternalEvent::UnitsLoaded(units, is_manual))
+                        .await;
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(AppInternalEvent::Error(format!(
+                            "Failed to load units: {e}"
+                        )))
+                        .await;
+                }
+            }
+        });
     }
 
     pub fn matches_filter_value(selected: Option<&str>, actual: &str) -> bool {
