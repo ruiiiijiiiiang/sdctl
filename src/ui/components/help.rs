@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
 use crate::{
@@ -13,21 +13,12 @@ use crate::{
 };
 
 pub fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
-    let chunks = Layout::vertical([
-        Constraint::Min(0),
-        Constraint::Length(if app.notification.is_some() { 3 } else { 0 }),
-    ])
-    .split(area);
-
-    let help_area = chunks[0];
-    let notify_area = chunks[1];
-
     let columns = Layout::horizontal([
         Constraint::Percentage(33),
         Constraint::Percentage(34),
         Constraint::Percentage(33),
     ])
-    .split(help_area.inner(ratatui::layout::Margin {
+    .split(area.inner(Margin {
         vertical: 0,
         horizontal: 1,
     }));
@@ -52,12 +43,19 @@ pub fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
     );
 
     if let Some(notification) = &app.notification {
+        let overlay = Rect {
+            x: area.x,
+            y: area.bottom().saturating_sub(3),
+            width: area.width,
+            height: 3,
+        };
+
         let notify_cols = Layout::horizontal([
             Constraint::Percentage(25),
             Constraint::Percentage(50),
             Constraint::Percentage(25),
         ])
-        .split(notify_area);
+        .split(overlay);
 
         let color = match notification.kind {
             NotificationType::Success => Color::Green,
@@ -72,6 +70,7 @@ pub fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
             .block(block)
             .alignment(Alignment::Center);
 
+        frame.render_widget(Clear, notify_cols[1]);
         frame.render_widget(paragraph, notify_cols[1]);
     }
 }
@@ -87,6 +86,15 @@ fn help_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<Line<
 fn nav_shortcuts() -> Vec<Line<'static>> {
     vec![
         shortcut("j/k", "Move up/down"),
+        shortcut("Ctrl+u/d", "Half page up/down"),
+        shortcut("Ctrl+b/f", "Full page up/down"),
+        shortcut("gg/G", "Top/Bottom"),
+    ]
+}
+
+fn nav_shortcuts_with_horizontal() -> Vec<Line<'static>> {
+    vec![
+        shortcut("h/j/k/l", "Move/scroll"),
         shortcut("Ctrl+u/d", "Half page up/down"),
         shortcut("Ctrl+b/f", "Full page up/down"),
         shortcut("gg/G", "Top/Bottom"),
@@ -132,7 +140,7 @@ fn log_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<L
 
     if app.log_view.line_block_select || app.log_view.line_select {
         return (
-            nav_shortcuts(),
+            nav_shortcuts_with_horizontal(),
             vec![shortcut("Space", "Mark"), shortcut("y/Enter", "Copy")],
             vec![shortcut("Esc", "Cancel")],
         );
@@ -160,7 +168,7 @@ fn log_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<L
     external.push(shortcut("e", "Open in editor"));
     external.push(shortcut("Esc/q", "Back"));
 
-    (nav_shortcuts(), action, external)
+    (nav_shortcuts_with_horizontal(), action, external)
 }
 
 fn file_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<Line<'static>>) {
@@ -186,7 +194,7 @@ fn file_view_columns(app: &App) -> (Vec<Line<'static>>, Vec<Line<'static>>, Vec<
     }
 
     (
-        nav_shortcuts(),
+        nav_shortcuts_with_horizontal(),
         action,
         vec![
             shortcut("e", "Override edit"),

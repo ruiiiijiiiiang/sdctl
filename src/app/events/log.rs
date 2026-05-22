@@ -91,18 +91,14 @@ impl App {
                 self.enter_unit_list_view();
                 return false;
             }
-            KeyCode::Char('v')
-                if !self.log_view.logs.is_empty() && !self.log_view.is_following =>
-            {
+            KeyCode::Char('v') if !self.log_view.logs.is_empty() && !self.log_view.is_following => {
                 self.log_view.line_select = true;
                 if self.log_view.state.selected().is_none() {
                     self.log_view.state.select(Some(0));
                 }
                 return false;
             }
-            KeyCode::Char('V')
-                if !self.log_view.logs.is_empty() && !self.log_view.is_following =>
-            {
+            KeyCode::Char('V') if !self.log_view.logs.is_empty() && !self.log_view.is_following => {
                 self.log_view.line_block_select = true;
                 self.log_view.line_marks.clear();
                 if self.log_view.state.selected().is_none() {
@@ -141,8 +137,7 @@ impl App {
                 return true;
             }
             KeyCode::Char('r')
-                if key.modifiers.contains(KeyModifiers::CONTROL)
-                    && !self.log_view.is_following =>
+                if key.modifiers.contains(KeyModifiers::CONTROL) && !self.log_view.is_following =>
             {
                 if let Some(unit) = self.get_selected_unit() {
                     let name = unit.name.clone();

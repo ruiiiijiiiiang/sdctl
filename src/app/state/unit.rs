@@ -107,7 +107,7 @@ impl App {
 
         self.file_view.content = edited_content.clone();
         self.file_view.path = request.mode.draft_label(&request.unit_name);
-        self.file_view.scroll = 0;
+        self.file_view.scroll_y = 0;
         self.pending_edit_review = Some(EditReview {
             unit_name: request.unit_name.clone(),
             scope: request.scope,
@@ -187,7 +187,7 @@ impl App {
         if let Some(review) = self.pending_edit_review.take() {
             self.file_view.content = review.restore_content;
             self.file_view.path = review.restore_path;
-            self.file_view.scroll = 0;
+            self.file_view.scroll_y = 0;
         }
     }
 }

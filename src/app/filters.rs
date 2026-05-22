@@ -171,13 +171,13 @@ impl App {
     }
 
     pub fn update_filter(&mut self) {
-        let selected_unit_key = if self.unit_list.selected_key == UnitSelectionKey::default() {
-            None
-        } else {
-            Some(self.unit_list.selected_key.clone())
-        };
-
         if self.search.query.is_empty() {
+            let selected_unit_key = if self.unit_list.selected_key == UnitSelectionKey::default() {
+                None
+            } else {
+                Some(self.unit_list.selected_key.clone())
+            };
+
             self.unit_list.filtered_indices = self
                 .unit_list
                 .units
@@ -189,6 +189,7 @@ impl App {
             self.unit_list
                 .filtered_indices
                 .sort_by_key(|&index| self.unit_list.units[index].name.to_ascii_lowercase());
+            self.restore_selection(selected_unit_key.as_ref());
         } else {
             let mut scored: Vec<(usize, u32)> = self
                 .unit_list
@@ -207,9 +208,12 @@ impl App {
                 })
             });
             self.unit_list.filtered_indices = scored.into_iter().map(|(index, _)| index).collect();
+            if !self.unit_list.filtered_indices.is_empty() {
+                self.unit_list.select_index(Some(0));
+            } else {
+                self.unit_list.select_index(None);
+            }
         }
-
-        self.restore_selection(selected_unit_key.as_ref());
     }
 
     pub fn filter_summary(&self, menu: FilterMenu) -> String {
@@ -241,8 +245,7 @@ impl App {
                 .units
                 .iter()
                 .filter(|u| {
-                    self.unit_matches_scope_for_menu(u, menu)
-                        && menu.unit_value(u) == *label
+                    self.unit_matches_scope_for_menu(u, menu) && menu.unit_value(u) == *label
                 })
                 .count();
 

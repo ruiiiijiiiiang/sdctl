@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::{
@@ -41,12 +41,11 @@ pub fn draw_file_view(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(
             Paragraph::new(lines)
                 .block(block)
-                .scroll((app.file_view.scroll, 0))
-                .wrap(Wrap { trim: false }),
+                .scroll((app.file_view.scroll_y, app.file_view.scroll_x)),
             area,
         );
 
-        render_scrollbar(frame, area, app.file_view.scroll as usize, content_length);
+        render_scrollbar(frame, area, app.file_view.scroll_y as usize, content_length);
     }
 }
 

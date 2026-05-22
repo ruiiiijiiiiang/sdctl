@@ -25,6 +25,7 @@ impl App {
                 self.log_view
                     .state
                     .select(Some(self.log_view.logs.len().saturating_sub(1)));
+                self.log_view.scroll_x = 0;
                 if is_manual {
                     self.notify(
                         "Logs refreshed".to_string(),
@@ -39,6 +40,7 @@ impl App {
                     self.log_view
                         .state
                         .select(Some(self.log_view.logs.len().saturating_sub(1)));
+                    self.log_view.scroll_x = 0;
                 }
             }
             AppInternalEvent::FileLoaded(content, path) => {
@@ -81,7 +83,7 @@ impl App {
                             self.view_mode = ViewMode::UnitList;
                             self.file_view.content.clear();
                             self.file_view.path.clear();
-                            self.file_view.scroll = 0;
+                            self.file_view.scroll_y = 0;
                             self.refresh_units(false).await;
                         }
                         None => {}

@@ -21,6 +21,7 @@ pub struct LogViewState {
     pub line_block_select: bool,
     pub selected_lines: HashSet<usize>,
     pub line_marks: Vec<usize>,
+    pub scroll_x: u16,
     pub is_following: bool,
     pub follow_task: Option<tokio::task::JoinHandle<()>>,
 }
@@ -50,6 +51,7 @@ impl LogViewState {
             }
         };
         self.state.select(Some(i));
+        self.scroll_x = 0;
     }
 
     pub fn toggle_line_mark(&mut self) {
@@ -108,6 +110,7 @@ impl App {
             self.view_mode = ViewMode::LogView;
             self.log_view.logs.clear();
             self.log_view.state.select(None);
+            self.log_view.scroll_x = 0;
             self.log_view.clear_visual_modes();
             self.fetch_unit_logs(name, scope, false).await;
         }
@@ -211,6 +214,7 @@ impl App {
         };
 
         self.log_view.state.select(Some(next_index));
+        self.log_view.scroll_x = 0;
     }
 
     pub fn toggle_log_line_mark(&mut self) {

@@ -6,6 +6,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::{
     app::state::context::App,
@@ -36,6 +37,34 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
     } else {
         let line_range = app.selected_log_line_range();
         let search_query = app.search.query.clone();
+        let content_width = area.width.saturating_sub(2);
+        let marker_width: u16 = if app.log_view.line_block_select || app.log_view.line_select {
+            2
+        } else {
+            0
+        };
+        let text_width = content_width.saturating_sub(marker_width);
+
+        let max_rendered_width = app
+            .log_view
+            .logs
+            .iter()
+            .map(|line| {
+                (match line.as_bytes().into_text() {
+                    Ok(t) => t.lines.first().map(|l| l.width()).unwrap_or(0),
+                    Err(_) => UnicodeWidthStr::width(line.as_str()),
+                }) as u16
+            })
+            .max()
+            .unwrap_or(0);
+        let effective_visible = text_width.saturating_sub(3);
+        app.log_view.scroll_x = app
+            .log_view
+            .scroll_x
+            .min(max_rendered_width.saturating_sub(effective_visible));
+
+        let selected = app.log_view.state.selected();
+
         let items: Vec<ListItem> = app
             .log_view
             .logs
@@ -84,6 +113,12 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
                         if should_bold {
                             apply_selected_style(&mut l);
                         }
+                        let scroll = if Some(i) == selected {
+                            app.log_view.scroll_x
+                        } else {
+                            0
+                        };
+                        clip_line(&mut l, scroll, text_width);
                         l.spans.insert(0, marker);
                         ListItem::new(l)
                     }
@@ -95,6 +130,12 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
                         if should_bold {
                             apply_selected_style(&mut l);
                         }
+                        let scroll = if Some(i) == selected {
+                            app.log_view.scroll_x
+                        } else {
+                            0
+                        };
+                        clip_line(&mut l, scroll, text_width);
                         l.spans.insert(0, marker);
                         ListItem::new(l)
                     }
@@ -115,6 +156,70 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
             app.log_view.logs.len(),
         );
     }
+}
+
+fn clip_line(line: &mut Line, scroll_x: u16, max_width: u16) {
+    let total_width = line.width() as u16;
+    if scroll_x == 0 && total_width <= max_width {
+        return;
+    }
+
+    let left_reserve: u16 = if scroll_x > 0 { 3 } else { 0 };
+    let right_edge = scroll_x + max_width;
+    let needs_right_trunc = total_width > right_edge;
+    let right_reserve: u16 = if needs_right_trunc { 3 } else { 0 };
+    let content_end = scroll_x + max_width.saturating_sub(left_reserve + right_reserve);
+
+    let mut new_spans = Vec::new();
+    let mut pos: u16 = 0;
+
+    for span in std::mem::take(&mut line.spans) {
+        let content = span.content;
+        let style = span.style;
+        let span_str = content.as_ref();
+        let span_start = pos;
+
+        let mut span_width: u16 = 0;
+        let mut char_buf: Option<String> = None;
+        for c in span_str.chars() {
+            let cw = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
+            let char_global = span_start + span_width;
+
+            if char_global < scroll_x {
+                span_width += cw;
+                continue;
+            }
+
+            if char_global + cw > content_end {
+                span_width += cw;
+                break;
+            }
+
+            if char_buf.is_none() {
+                let cap = content_end.saturating_sub(char_global) as usize;
+                char_buf = Some(String::with_capacity(cap));
+            }
+            span_width += cw;
+            char_buf.as_mut().unwrap().push(c);
+        }
+
+        if let Some(clipped) = char_buf {
+            new_spans.push(Span::styled(clipped, style));
+        }
+
+        pos = span_start + span_width;
+        if pos >= content_end {
+            break;
+        }
+    }
+
+    if scroll_x > 0 {
+        new_spans.insert(0, Span::styled("...", Style::default().fg(Color::Gray)));
+    }
+    if needs_right_trunc {
+        new_spans.push(Span::styled("...", Style::default().fg(Color::Gray)));
+    }
+    line.spans = new_spans;
 }
 
 fn highlight_exact_match(line: Line<'_>, query: &str) -> Line<'static> {

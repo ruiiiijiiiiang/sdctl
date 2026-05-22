@@ -57,7 +57,7 @@ pub fn render_edit_review_modal(frame: &mut Frame, review: &EditReview) {
 }
 
 pub fn render_error_modal(frame: &mut Frame, message: &str) {
-    let area = centered_rect(60, 20, frame.area());
+    let area = centered_rect(MODAL_WIDTH, MODAL_HEIGHT, frame.area());
     frame.render_widget(Clear, area);
     let block = Block::default()
         .title(" Error ")

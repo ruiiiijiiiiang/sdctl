@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::app::state::context::{App, NavAction};
+use crate::app::state::context::{App, NavAction, ViewMode};
 
 impl App {
     pub fn handle_nav_key(&mut self, key: KeyEvent) -> bool {
@@ -15,6 +15,16 @@ impl App {
         let action = match key.code {
             KeyCode::Char('j') | KeyCode::Down => Some(NavAction::Down),
             KeyCode::Char('k') | KeyCode::Up => Some(NavAction::Up),
+            KeyCode::Char('h') | KeyCode::Left
+                if matches!(self.view_mode, ViewMode::LogView | ViewMode::FileView) =>
+            {
+                Some(NavAction::Left)
+            }
+            KeyCode::Char('l') | KeyCode::Right
+                if matches!(self.view_mode, ViewMode::LogView | ViewMode::FileView) =>
+            {
+                Some(NavAction::Right)
+            }
             KeyCode::Char('G') => Some(NavAction::Bottom),
             KeyCode::Char('g') => {
                 self.pending_nav_prefix = Some('g');

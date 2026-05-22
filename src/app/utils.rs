@@ -8,7 +8,7 @@ use ansi_to_tui::IntoText;
 
 pub const AUTH_START_DELAY: Duration = Duration::from_millis(500);
 
-pub const LOG_LINE_LIMIT: usize = 1000;
+pub const LOG_LINE_LIMIT: usize = 500;
 
 pub fn build_override_template(unit_name: &str, source_path: &str) -> String {
     format!(

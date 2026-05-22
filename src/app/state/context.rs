@@ -31,6 +31,8 @@ pub enum SearchInputAction {
 pub enum NavAction {
     Up,
     Down,
+    Left,
+    Right,
     PageUp,
     PageDown,
     HalfPageUp,
