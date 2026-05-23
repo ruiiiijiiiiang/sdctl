@@ -5,6 +5,8 @@ use crate::app::state::{
     unit::UnitListState,
 };
 
+const HORIZONTAL_SCROLL_STEP: u16 = 12;
+
 pub trait Navigable {
     fn navigate(&mut self, action: NavAction, height: u16);
 }
@@ -36,8 +38,10 @@ impl Navigable for LogViewState {
         match action {
             NavAction::Up => self.move_selection(-1),
             NavAction::Down => self.move_selection(1),
-            NavAction::Left => self.scroll_x = self.scroll_x.saturating_sub(4),
-            NavAction::Right => self.scroll_x = self.scroll_x.saturating_add(4),
+            NavAction::Left => self.scroll_x = self.scroll_x.saturating_sub(HORIZONTAL_SCROLL_STEP),
+            NavAction::Right => {
+                self.scroll_x = self.scroll_x.saturating_add(HORIZONTAL_SCROLL_STEP)
+            }
             NavAction::HalfPageUp => self.move_selection(-half_height),
             NavAction::HalfPageDown => self.move_selection(half_height),
             NavAction::PageUp => self.move_selection(-(height as i32)),
@@ -59,8 +63,10 @@ impl Navigable for FileViewState {
         match action {
             NavAction::Up => self.move_scroll(-1),
             NavAction::Down => self.move_scroll(1),
-            NavAction::Left => self.scroll_x = self.scroll_x.saturating_sub(4),
-            NavAction::Right => self.scroll_x = self.scroll_x.saturating_add(4),
+            NavAction::Left => self.scroll_x = self.scroll_x.saturating_sub(HORIZONTAL_SCROLL_STEP),
+            NavAction::Right => {
+                self.scroll_x = self.scroll_x.saturating_add(HORIZONTAL_SCROLL_STEP)
+            }
             NavAction::HalfPageUp => self.move_scroll(-half_height),
             NavAction::HalfPageDown => self.move_scroll(half_height),
             NavAction::PageUp => self.move_scroll(-(height as i32)),

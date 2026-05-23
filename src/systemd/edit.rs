@@ -125,3 +125,18 @@ fn is_system_directory_read_only() -> bool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_edit_content;
+
+    #[test]
+    fn normalize_edit_content_preserves_trailing_newline() {
+        assert_eq!(normalize_edit_content("line\n"), "line\n");
+    }
+
+    #[test]
+    fn normalize_edit_content_appends_missing_newline() {
+        assert_eq!(normalize_edit_content("line"), "line\n");
+    }
+}

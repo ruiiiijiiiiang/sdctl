@@ -45,25 +45,15 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
         };
         let text_width = content_width.saturating_sub(marker_width);
 
-        let max_rendered_width = app
-            .log_view
-            .logs
-            .iter()
-            .map(|line| {
-                (match line.as_bytes().into_text() {
-                    Ok(t) => t.lines.first().map(|l| l.width()).unwrap_or(0),
-                    Err(_) => UnicodeWidthStr::width(line.as_str()),
-                }) as u16
-            })
-            .max()
+        let selected = app.log_view.state.selected();
+        let selected_line_width = selected
+            .and_then(|index| app.log_view.logs.get(index))
+            .map(|line| rendered_width(line))
             .unwrap_or(0);
-        let effective_visible = text_width.saturating_sub(3);
         app.log_view.scroll_x = app
             .log_view
             .scroll_x
-            .min(max_rendered_width.saturating_sub(effective_visible));
-
-        let selected = app.log_view.state.selected();
+            .min(max_scroll_x(selected_line_width, text_width));
 
         let items: Vec<ListItem> = app
             .log_view
@@ -222,6 +212,17 @@ fn clip_line(line: &mut Line, scroll_x: u16, max_width: u16) {
     line.spans = new_spans;
 }
 
+fn rendered_width(line: &str) -> u16 {
+    match line.as_bytes().into_text() {
+        Ok(t) => t.lines.first().map(|l| l.width() as u16).unwrap_or(0),
+        Err(_) => UnicodeWidthStr::width(line) as u16,
+    }
+}
+
+fn max_scroll_x(total_width: u16, max_width: u16) -> u16 {
+    total_width.saturating_sub(max_width.saturating_sub(3))
+}
+
 fn highlight_exact_match(line: Line<'_>, query: &str) -> Line<'static> {
     let mut spans = Vec::new();
     for span in line.spans {
@@ -257,5 +258,27 @@ fn apply_selected_style(line: &mut Line<'_>) {
     line.style = line.style.patch(bold);
     for span in &mut line.spans {
         span.style = span.style.patch(bold);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{max_scroll_x, rendered_width};
+
+    #[test]
+    fn rendered_width_uses_the_visible_text_only() {
+        assert_eq!(rendered_width("plain text"), 10);
+        assert_eq!(rendered_width("αβγ"), 3);
+    }
+
+    #[test]
+    fn selected_line_scroll_limit_should_match_the_selected_line() {
+        let selected_width = rendered_width("short line");
+        let other_width = rendered_width("this is a much longer line");
+        let visible_width = 20;
+
+        assert!(other_width > selected_width);
+        assert_eq!(max_scroll_x(selected_width, visible_width), 0);
+        assert_eq!(max_scroll_x(other_width, visible_width), 9);
     }
 }

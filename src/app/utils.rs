@@ -86,3 +86,24 @@ pub fn strip_ansi_content(content: &str) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_override_template_includes_unit_name_and_source_path() {
+        let template = build_override_template("ssh.service", "/etc/systemd/system/ssh.service");
+
+        assert!(template.contains("ssh.service"));
+        assert!(template.contains("/etc/systemd/system/ssh.service"));
+        assert!(template.ends_with("# Environment=KEY=value\n"));
+    }
+
+    #[test]
+    fn strip_ansi_content_removes_escape_sequences() {
+        let stripped = strip_ansi_content("\u{1b}[31mred\u{1b}[0m\nplain");
+
+        assert_eq!(stripped, "red\nplain");
+    }
+}

@@ -421,3 +421,44 @@ fn clear_enablement_state_cache() {
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     cache.clear();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{build_unit_file_state_map, template_unit_name, unit_has_file};
+
+    #[test]
+    fn build_unit_file_state_map_keeps_basename_keys() {
+        let map = build_unit_file_state_map(vec![
+            (
+                "/usr/lib/systemd/system/ssh.service".to_string(),
+                "enabled".to_string(),
+            ),
+            (
+                "/etc/systemd/system/custom.socket".to_string(),
+                "masked".to_string(),
+            ),
+        ]);
+
+        assert_eq!(map.len(), 2);
+        assert!(map.contains_key("ssh.service"));
+        assert!(map.contains_key("custom.socket"));
+        assert_eq!(map["ssh.service"].state, "enabled");
+    }
+
+    #[test]
+    fn template_unit_name_handles_instance_units() {
+        assert_eq!(
+            template_unit_name("getty@tty1.service"),
+            Some("getty@.service".to_string())
+        );
+        assert_eq!(template_unit_name("ssh.service"), None);
+    }
+
+    #[test]
+    fn unit_has_file_recognizes_regular_unit_suffixes() {
+        assert!(unit_has_file("ssh.service"));
+        assert!(unit_has_file("ssh.socket"));
+        assert!(unit_has_file("foo.target"));
+        assert!(!unit_has_file("dbus"));
+    }
+}

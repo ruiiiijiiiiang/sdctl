@@ -172,7 +172,9 @@ impl App {
         if self.unit_list.filtered_indices.is_empty() {
             self.unit_list.select_index(None);
         } else {
-            self.unit_list.select_index(Some(0));
+            let max = self.unit_list.filtered_indices.len().saturating_sub(1);
+            let current = self.unit_list.state.selected().unwrap_or(0);
+            self.unit_list.select_index(Some(current.min(max)));
         }
     }
 
