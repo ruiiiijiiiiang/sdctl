@@ -46,11 +46,10 @@ impl App {
                         self.file_view.search_match = None;
                     }
                 }
-                KeyCode::Enter => self.search.is_active = false,
                 _ => {
                     if self.handle_search_key(key) == Some(SearchInputAction::Edit) {
                         match self.view_mode {
-                            ViewMode::UnitList => self.update_filter(),
+                            ViewMode::UnitList => self.update_filter(true),
                             ViewMode::LogView => self.cycle_log_search_match(true),
                             ViewMode::FileView => self.cycle_file_search_match(true),
                         }
@@ -93,7 +92,7 @@ impl App {
                     {
                         menu.set_selected_value(self, option.value);
                         self.unit_list.open_filter_menu = None;
-                        self.update_filter();
+                        self.update_filter(true);
                     }
                 }
             }

@@ -68,6 +68,7 @@ impl App {
     pub fn enter_unit_list_view(&mut self) {
         self.view_mode = ViewMode::UnitList;
         self.search.clear();
+        self.update_filter(false);
         self.log_view.clear_visual_modes();
         self.file_view.search_match = None;
     }

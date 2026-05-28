@@ -68,6 +68,10 @@ impl App {
                 edit_search_key_impl(key, &mut self.search.query, &mut self.search.cursor);
                 Some(SearchInputAction::Edit)
             }
+            KeyCode::Enter => {
+                self.search.is_active = false;
+                Some(SearchInputAction::Edit)
+            }
             _ => None,
         }
     }

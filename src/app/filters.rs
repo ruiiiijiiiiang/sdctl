@@ -167,11 +167,13 @@ impl App {
         self.search.is_active = false;
         self.unit_list.open_filter_menu = None;
         self.search.cursor = 0;
-        self.update_filter();
+        self.update_filter(true);
     }
 
-    pub fn update_filter(&mut self) {
-        let selected_unit_key = if self.unit_list.selected_key == UnitSelectionKey::default() {
+    pub fn update_filter(&mut self, reset_selection: bool) {
+        let selected_unit_key = if reset_selection
+            || self.unit_list.selected_key == UnitSelectionKey::default()
+        {
             None
         } else {
             Some(self.unit_list.selected_key.clone())
@@ -208,7 +210,15 @@ impl App {
             });
             self.unit_list.filtered_indices = scored.into_iter().map(|(index, _)| index).collect();
         }
-        self.restore_selection(selected_unit_key.as_ref());
+        if reset_selection {
+            if self.unit_list.filtered_indices.is_empty() {
+                self.unit_list.select_index(None);
+            } else {
+                self.unit_list.select_index(Some(0));
+            }
+        } else {
+            self.restore_selection(selected_unit_key.as_ref());
+        }
     }
 
     pub fn filter_summary(&self, menu: FilterMenu) -> String {
@@ -365,7 +375,7 @@ mod tests {
         let mut app = App::blank(tx);
         app.unit_list.units = units;
         app.is_loading = false;
-        app.update_filter();
+        app.update_filter(false);
         app
     }
 
@@ -451,7 +461,7 @@ mod tests {
         app.unit_list.active_filter = Some(UnitActiveState::Failed);
         app.unit_list.enablement_filter = Some(UnitEnablementState::Static);
         app.search.query = "broken".to_string();
-        app.update_filter();
+        app.update_filter(true);
 
         assert_eq!(filtered_names(&app), vec!["broken.service"]);
     }
@@ -537,7 +547,7 @@ mod tests {
         assert_eq!(app.unit_list.selected_key.name, "zeta.service");
 
         app.search.query = "zeta".to_string();
-        app.update_filter();
+        app.update_filter(true);
 
         assert_eq!(filtered_names(&app), vec!["zeta.service"]);
         assert_eq!(app.unit_list.selected_key.name, "zeta.service");
@@ -580,7 +590,7 @@ mod tests {
         };
         app.unit_list.state.select(Some(0));
 
-        app.update_filter();
+        app.update_filter(false);
 
         assert_eq!(app.unit_list.selected_key.name, "gamma.service");
         assert_eq!(app.selected_unit_index(), Some(2));
@@ -618,7 +628,7 @@ mod tests {
         app.unit_list.select_index(Some(1));
         assert_eq!(app.unit_list.selected_key.path, "/test/unit/dup_b");
 
-        app.update_filter();
+        app.update_filter(false);
 
         assert_eq!(app.unit_list.selected_key.path, "/test/unit/dup_b");
         assert_eq!(
@@ -707,7 +717,7 @@ mod tests {
         assert!(options.iter().any(|option| option.label == "target"));
 
         app.unit_list.type_filter = Some("socket".to_string());
-        app.update_filter();
+        app.update_filter(true);
 
         assert_eq!(filtered_names(&app), vec!["ssh.socket"]);
     }
@@ -813,7 +823,7 @@ mod tests {
 
         app.unit_list.type_filter = Some("service".to_string());
         app.unit_list.scope_filter = Some(UnitScope::Session);
-        app.update_filter();
+        app.update_filter(true);
 
         assert!(filtered_names(&app).is_empty());
     }

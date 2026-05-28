@@ -11,7 +11,19 @@ impl App {
             AppInternalEvent::UnitsLoaded(units, is_manual) => {
                 self.unit_list.units = units;
                 self.is_loading = false;
-                self.update_filter();
+                if self.view_mode == ViewMode::UnitList {
+                    self.update_filter(false);
+                } else {
+                    let n = self.unit_list.units.len();
+                    self.unit_list.filtered_indices.retain(|&i| i < n);
+                    if let Some(sel) = self.unit_list.state.selected()
+                        && sel >= self.unit_list.filtered_indices.len()
+                    {
+                        self.unit_list
+                            .state
+                            .select(self.unit_list.filtered_indices.len().checked_sub(1));
+                    }
+                }
                 if is_manual {
                     self.notify(
                         "Unit list refreshed".to_string(),

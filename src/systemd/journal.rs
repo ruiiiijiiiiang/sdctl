@@ -4,17 +4,11 @@ use tokio::process::Command;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::LinesStream;
 
-use tailspin::Highlighter;
-
-pub struct JournalManager {
-    highlighter: Highlighter,
-}
+pub struct JournalManager;
 
 impl JournalManager {
     pub fn new() -> Self {
-        Self {
-            highlighter: Highlighter::default(),
-        }
+        Self
     }
 
     pub async fn fetch_logs(
@@ -45,10 +39,7 @@ impl JournalManager {
         }
 
         let content = String::from_utf8_lossy(&output.stdout);
-        let lines: Vec<String> = content
-            .lines()
-            .map(|line| self.highlighter.apply(line).into_owned())
-            .collect();
+        let lines: Vec<String> = content.lines().map(String::from).collect();
 
         Ok(lines)
     }
@@ -79,11 +70,7 @@ impl JournalManager {
             .ok_or_else(|| Error::other("Failed to capture stdout"))?;
 
         let reader = BufReader::new(stdout);
-        let highlighter = self.highlighter;
 
-        Ok(LinesStream::new(reader.lines()).map(move |line| {
-            let line = line.unwrap_or_default();
-            highlighter.apply(&line).into_owned()
-        }))
+        Ok(LinesStream::new(reader.lines()).map(move |line| line.unwrap_or_default()))
     }
 }

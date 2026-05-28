@@ -6,6 +6,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
+use tailspin::Highlighter;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::{
@@ -17,6 +18,7 @@ use crate::{
 };
 
 pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
+    let highlighter = Highlighter::default();
     let block = Block::default().borders(Borders::ALL).title(format!(
         " Journal Logs: {} ",
         app.unit_list.selected_key.name
@@ -94,7 +96,8 @@ pub fn draw_log_view(frame: &mut Frame, app: &mut App, area: Rect) {
                     app.log_view.selected_lines.contains(&i)
                 };
 
-                match line.as_bytes().into_text() {
+                let highlighted = highlighter.apply(line);
+                match highlighted.as_bytes().into_text() {
                     Ok(t) => {
                         let mut l = t.lines.into_iter().next().unwrap_or_else(|| Line::from(""));
                         if !search_query.is_empty() && line.contains(&search_query) {
@@ -224,33 +227,91 @@ fn max_scroll_x(total_width: u16, max_width: u16) -> u16 {
 }
 
 fn highlight_exact_match(line: Line<'_>, query: &str) -> Line<'static> {
-    let mut spans = Vec::new();
-    for span in line.spans {
-        let content = span.content;
-        let style = span.style;
-        if query.is_empty() || !content.contains(query) {
-            spans.push(Span::styled(content.to_string(), style));
-            continue;
+    if query.is_empty() {
+        return Line::from(
+            line.spans
+                .iter()
+                .map(|s| Span::styled(s.content.to_string(), s.style))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    let mut full = String::new();
+    let boundaries: Vec<(usize, usize)> = line
+        .spans
+        .iter()
+        .map(|s| {
+            let start = full.len();
+            full.push_str(s.content.as_ref());
+            (start, full.len())
+        })
+        .collect();
+
+    let mut matches = Vec::new();
+    let mut search = 0;
+    while let Some(pos) = full[search..].find(query) {
+        let m = search + pos;
+        matches.push((m, m + query.len()));
+        search = m + 1;
+    }
+
+    if matches.is_empty() {
+        return Line::from(
+            line.spans
+                .iter()
+                .map(|s| Span::styled(s.content.to_string(), s.style))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    let mut new_spans: Vec<Span<'static>> = Vec::new();
+    let mut mi = 0;
+
+    for (si, span) in line.spans.iter().enumerate() {
+        let (s_start, s_end) = boundaries[si];
+        let content = span.content.as_ref();
+        let mut cut = 0;
+
+        while mi < matches.len() {
+            let (m_start, m_end) = matches[mi];
+
+            if m_end <= s_start {
+                mi += 1;
+                continue;
+            }
+            if m_start >= s_end {
+                break;
+            }
+
+            let local_start = m_start.max(s_start) - s_start;
+            let local_end = m_end.min(s_end) - s_start;
+
+            if local_start > cut {
+                new_spans.push(Span::styled(
+                    content[cut..local_start].to_string(),
+                    span.style,
+                ));
+            }
+
+            new_spans.push(Span::styled(
+                content[local_start..local_end].to_string(),
+                span.style.patch(search_match_style()),
+            ));
+
+            cut = local_end;
+
+            if m_end > s_end {
+                break;
+            }
+            mi += 1;
         }
 
-        let mut remaining = content.as_ref();
-        while let Some(pos) = remaining.find(query) {
-            let (before, after) = remaining.split_at(pos);
-            if !before.is_empty() {
-                spans.push(Span::styled(before.to_string(), style));
-            }
-            spans.push(Span::styled(
-                query.to_string(),
-                style.patch(search_match_style()),
-            ));
-            remaining = &after[query.len()..];
-        }
-        if !remaining.is_empty() {
-            spans.push(Span::styled(remaining.to_string(), style));
+        if cut < content.len() {
+            new_spans.push(Span::styled(content[cut..].to_string(), span.style));
         }
     }
 
-    Line::from(spans)
+    Line::from(new_spans)
 }
 
 fn apply_selected_style(line: &mut Line<'_>) {
