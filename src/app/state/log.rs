@@ -137,7 +137,8 @@ impl App {
     pub async fn start_following_logs(&mut self, unit_name: String, scope: String) {
         self.stop_following_logs();
         self.log_view.is_following = true;
-        self.is_loading = false;
+        self.fetch_unit_logs(unit_name.clone(), scope.clone(), false)
+            .await;
 
         let tx = self.internal_tx.clone();
         let handle = spawn(async move {
