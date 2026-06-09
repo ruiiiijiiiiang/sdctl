@@ -1,4 +1,6 @@
 use std::{
+    env,
+    fmt::Display,
     fs,
     io::{Error, Read, Result, Write},
     process,
@@ -107,14 +109,32 @@ impl EmbeddedAuthPane {
     }
 }
 
+fn is_pkttyagent_available() -> bool {
+    if let Ok(path) = env::var("PATH") {
+        for p in env::split_paths(&path) {
+            if p.join("pkttyagent").exists() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 impl App {
     pub async fn start_embedded_auth(&mut self, action: PrivilegedAction) -> Result<()> {
         if self.embedded_auth.is_some() {
             return Ok(());
         }
 
-        let (cols, rows) = self.terminal_size;
-        let pane = EmbeddedAuthPane::spawn(cols, rows, self.internal_tx.clone())?;
+        let has_agent = is_pkttyagent_available();
+        if !has_agent {
+            self.notify(
+                "Warning: polkit agent (pkttyagent) not available. Privileged actions may fail."
+                    .to_string(),
+                crate::models::NotificationType::Error,
+            );
+        }
+
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let cancel_clone = Arc::clone(&cancel_flag);
         let tx_clone = self.internal_tx.clone();
@@ -143,7 +163,22 @@ impl App {
         });
 
         self.active_privileged_action = Some(action);
-        self.embedded_auth = Some(EmbeddedAuthFlow { pane, cancel_flag });
+
+        if has_agent {
+            let (cols, rows) = self.terminal_size;
+            match EmbeddedAuthPane::spawn(cols, rows, self.internal_tx.clone()) {
+                Ok(pane) => {
+                    self.embedded_auth = Some(EmbeddedAuthFlow { pane, cancel_flag });
+                }
+                Err(e) => {
+                    self.notify(
+                        format!("Warning: Failed to start pkttyagent ({e}). Privileged actions may fail."),
+                        crate::models::NotificationType::Error,
+                    );
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -163,7 +198,7 @@ impl App {
     }
 }
 
-fn pty_to_io_error(err: impl std::fmt::Display) -> Error {
+fn pty_to_io_error(err: impl Display) -> Error {
     Error::other(err.to_string())
 }
 

@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashSet};
+
 use strum::VariantNames;
 
 use crate::{
@@ -171,13 +172,12 @@ impl App {
     }
 
     pub fn update_filter(&mut self, reset_selection: bool) {
-        let selected_unit_key = if reset_selection
-            || self.unit_list.selected_key == UnitSelectionKey::default()
-        {
-            None
-        } else {
-            Some(self.unit_list.selected_key.clone())
-        };
+        let selected_unit_key =
+            if reset_selection || self.unit_list.selected_key == UnitSelectionKey::default() {
+                None
+            } else {
+                Some(self.unit_list.selected_key.clone())
+            };
 
         if self.search.query.is_empty() {
             self.unit_list.filtered_indices = self

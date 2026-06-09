@@ -1,8 +1,13 @@
-use std::io::{Error, Result};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
-use tokio_stream::StreamExt;
-use tokio_stream::wrappers::LinesStream;
+use std::{
+    io::{Error, Result},
+    process::Stdio,
+};
+
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
+use tokio_stream::{StreamExt, wrappers::LinesStream};
 
 pub struct JournalManager;
 
@@ -27,7 +32,7 @@ impl JournalManager {
             .arg("-n")
             .arg(limit.to_string())
             .arg("--no-pager")
-            .stderr(std::process::Stdio::null());
+            .stderr(Stdio::null());
 
         let output = command.output().await?;
 
@@ -60,8 +65,8 @@ impl JournalManager {
             .arg("-n")
             .arg(limit.to_string())
             .arg("-f")
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null());
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
 
         let mut child = command.spawn()?;
         let stdout = child

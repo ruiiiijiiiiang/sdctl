@@ -1,3 +1,5 @@
+use std::mem;
+
 use ansi_to_tui::IntoText;
 use ratatui::{
     Frame,
@@ -166,7 +168,7 @@ fn clip_line(line: &mut Line, scroll_x: u16, max_width: u16) {
     let mut new_spans = Vec::new();
     let mut pos: u16 = 0;
 
-    for span in std::mem::take(&mut line.spans) {
+    for span in mem::take(&mut line.spans) {
         let content = span.content;
         let style = span.style;
         let span_str = content.as_ref();

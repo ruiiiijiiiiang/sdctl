@@ -3,7 +3,7 @@ mod models;
 mod systemd;
 mod ui;
 
-use std::panic;
+use std::{panic, process};
 
 use crate::{app::runner::run_app, ui::utils::Tui};
 
@@ -20,7 +20,7 @@ async fn main() -> color_eyre::Result<()> {
     if let Err(e) = run_app().await {
         let _ = Tui::exit_terminal();
         eprintln!("Application error: {e}");
-        std::process::exit(1);
+        process::exit(1);
     }
 
     Ok(())
