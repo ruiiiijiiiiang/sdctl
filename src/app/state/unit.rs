@@ -125,9 +125,7 @@ impl App {
             return None;
         }
         self.unit_list.units.iter().find(|unit| {
-            unit.name == key.name
-                && unit.scope == key.scope
-                && unit.path.to_string() == key.path
+            unit.name == key.name && unit.scope == key.scope && unit.path.to_string() == key.path
         })
     }
 
