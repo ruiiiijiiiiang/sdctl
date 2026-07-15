@@ -120,8 +120,15 @@ impl App {
     }
 
     pub fn get_selected_unit(&self) -> Option<&UnitInfo> {
-        self.selected_unit_index()
-            .map(|i| &self.unit_list.units[self.unit_list.filtered_indices[i]])
+        let key = &self.unit_list.selected_key;
+        if key == &UnitSelectionKey::default() {
+            return None;
+        }
+        self.unit_list.units.iter().find(|unit| {
+            unit.name == key.name
+                && unit.scope == key.scope
+                && unit.path.to_string() == key.path
+        })
     }
 
     pub fn build_edit_request(&self, mode: UnitEditMode) -> Option<EditRequest> {
