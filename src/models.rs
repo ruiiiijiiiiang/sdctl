@@ -71,6 +71,64 @@ impl UnitAction {
             Self::ResetFailed => "Reset failed state for",
         }
     }
+
+    pub fn is_applicable_to(self, unit: &UnitInfo) -> bool {
+        if matches!(
+            (unit.load_state, unit.active_state, unit.enablement_state,),
+            (UnitLoadState::Unknown, _, _,)
+                | (_, UnitActiveState::Unknown, _,)
+                | (_, _, UnitEnablementState::Unknown,)
+        ) {
+            return true;
+        }
+
+        if unit_is_masked(unit) {
+            return self == Self::Unmask;
+        }
+
+        match self {
+            Self::Start => matches!(
+                unit.active_state,
+                UnitActiveState::Inactive | UnitActiveState::Failed | UnitActiveState::Maintenance
+            ),
+            Self::Stop => matches!(
+                unit.active_state,
+                UnitActiveState::Active | UnitActiveState::Activating | UnitActiveState::Reloading
+            ),
+            Self::Restart => matches!(
+                unit.active_state,
+                UnitActiveState::Active
+                    | UnitActiveState::Inactive
+                    | UnitActiveState::Failed
+                    | UnitActiveState::Maintenance
+            ),
+            Self::Reload => unit.active_state == UnitActiveState::Active && unit.can_reload,
+            Self::ResetFailed => unit.active_state == UnitActiveState::Failed,
+            Self::Enable => matches!(
+                unit.enablement_state,
+                UnitEnablementState::Disabled
+                    | UnitEnablementState::DisabledRuntime
+                    | UnitEnablementState::Indirect
+            ),
+            Self::Disable => matches!(
+                unit.enablement_state,
+                UnitEnablementState::Enabled
+                    | UnitEnablementState::EnabledRuntime
+                    | UnitEnablementState::Linked
+                    | UnitEnablementState::LinkedRuntime
+            ),
+            Self::Mask => !unit_is_masked(unit),
+            Self::Unmask => unit_is_masked(unit),
+        }
+    }
+}
+
+fn unit_is_masked(unit: &UnitInfo) -> bool {
+    unit.load_state == UnitLoadState::Masked
+        || matches!(
+            unit.enablement_state,
+            UnitEnablementState::Masked | UnitEnablementState::MaskedRuntime
+        )
 }
 
 #[derive(Clone, Debug)]
@@ -130,6 +188,7 @@ pub struct UnitInfo {
     pub load_state: UnitLoadState,
     pub active_state: UnitActiveState,
     pub enablement_state: UnitEnablementState,
+    pub can_reload: bool,
     pub sub_state: String,
     pub path: OwnedObjectPath,
     pub fragment_path: String,
@@ -364,6 +423,26 @@ impl UnitEnablementState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use zbus::zvariant::OwnedObjectPath;
+
+    fn unit(
+        load_state: UnitLoadState,
+        active_state: UnitActiveState,
+        enablement_state: UnitEnablementState,
+    ) -> UnitInfo {
+        UnitInfo {
+            name: "example.service".to_string(),
+            description: String::new(),
+            scope: UnitScope::Global,
+            load_state,
+            active_state,
+            enablement_state,
+            can_reload: false,
+            sub_state: String::new(),
+            path: OwnedObjectPath::try_from("/test/unit/example").unwrap(),
+            fragment_path: "/etc/systemd/system/example.service".to_string(),
+        }
+    }
 
     #[test]
     fn unit_type_round_trips_known_values_and_falls_back_to_unknown() {
@@ -397,6 +476,60 @@ mod tests {
             UnitType::from_unit_name("foo.bar.service"),
             UnitType::Service
         );
+    }
+
+    #[test]
+    fn unit_actions_follow_state_and_allow_unknown_units() {
+        let mut active = unit(
+            UnitLoadState::Loaded,
+            UnitActiveState::Active,
+            UnitEnablementState::Enabled,
+        );
+        assert!(!UnitAction::Start.is_applicable_to(&active));
+        assert!(UnitAction::Stop.is_applicable_to(&active));
+        assert!(!UnitAction::Reload.is_applicable_to(&active));
+        active.can_reload = true;
+        assert!(UnitAction::Reload.is_applicable_to(&active));
+        assert!(!UnitAction::ResetFailed.is_applicable_to(&active));
+        assert!(UnitAction::Disable.is_applicable_to(&active));
+        assert!(!UnitAction::Enable.is_applicable_to(&active));
+
+        let failed = unit(
+            UnitLoadState::Loaded,
+            UnitActiveState::Failed,
+            UnitEnablementState::Disabled,
+        );
+        assert!(UnitAction::Start.is_applicable_to(&failed));
+        assert!(UnitAction::ResetFailed.is_applicable_to(&failed));
+        assert!(UnitAction::Enable.is_applicable_to(&failed));
+
+        let masked = unit(
+            UnitLoadState::Masked,
+            UnitActiveState::Inactive,
+            UnitEnablementState::Masked,
+        );
+        assert!(!UnitAction::Start.is_applicable_to(&masked));
+        assert!(!UnitAction::Mask.is_applicable_to(&masked));
+        assert!(UnitAction::Unmask.is_applicable_to(&masked));
+
+        let unknown = unit(
+            UnitLoadState::Unknown,
+            UnitActiveState::Unknown,
+            UnitEnablementState::Unknown,
+        );
+        for action in [
+            UnitAction::Start,
+            UnitAction::Stop,
+            UnitAction::Restart,
+            UnitAction::Reload,
+            UnitAction::ResetFailed,
+            UnitAction::Enable,
+            UnitAction::Disable,
+            UnitAction::Mask,
+            UnitAction::Unmask,
+        ] {
+            assert!(action.is_applicable_to(&unknown));
+        }
     }
 
     #[test]

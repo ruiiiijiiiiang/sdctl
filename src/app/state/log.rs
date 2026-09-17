@@ -262,6 +262,7 @@ mod tests {
             load_state,
             active_state,
             enablement_state,
+            can_reload: false,
             sub_state: active_state.to_string(),
             path: OwnedObjectPath::try_from(path).unwrap(),
             fragment_path: format!("/etc/systemd/system/{name}"),

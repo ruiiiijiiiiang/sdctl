@@ -148,6 +148,9 @@ impl App {
 
     pub async fn trigger_selected_unit_command(&mut self, action: UnitAction) -> Result<()> {
         if let Some(unit) = self.get_selected_unit() {
+            if !action.is_applicable_to(unit) {
+                return Ok(());
+            }
             self.start_embedded_auth(PrivilegedAction::UnitCommand {
                 unit_name: unit.name.clone(),
                 scope: unit.scope,
@@ -231,6 +234,7 @@ mod tests {
             load_state,
             active_state,
             enablement_state,
+            can_reload: false,
             sub_state: active_state.to_string(),
             path: OwnedObjectPath::try_from(path).unwrap(),
             fragment_path: format!("/etc/systemd/system/{name}"),

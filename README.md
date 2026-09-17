@@ -91,6 +91,16 @@ This is why I built `sdctl` with a completely different security model: the app 
 - `e`: Create/Edit **drop-in override** (`override.conf`)
 - `E`: Edit **full unit file** (replaces unit fragment)
 
+### Mouse
+
+- Unit list: click a row to select it and use the wheel to navigate
+- Selected unit actions: click a key/helper label to run it; centered action cells wrap onto additional lines as the terminal narrows
+- Filter headers: click to open a filter menu, then click an option
+- Log viewer: click a line to select it and use the wheel to scroll
+- Unit file viewer: use the wheel to scroll
+
+Mouse input works through SSH when the session has a PTY (for example, `ssh -t host sdctl`) and the local terminal supports mouse reporting. Keyboard controls remain available as a fallback.
+
 ## Tech Stack
 
 - **UI Framework**: [ratatui](https://github.com/ratatui/ratatui)

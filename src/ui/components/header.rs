@@ -20,15 +20,7 @@ pub fn draw_unit_header(
     app: &App,
     area: Rect,
 ) -> (Rect, Rect, Rect, Rect, Rect) {
-    let header_layout = Layout::horizontal([
-        Constraint::Percentage(30),
-        UNIT_COLUMN_CONSTRAINTS[1],
-        UNIT_COLUMN_CONSTRAINTS[2],
-        UNIT_COLUMN_CONSTRAINTS[3],
-        UNIT_COLUMN_CONSTRAINTS[4],
-        UNIT_COLUMN_CONSTRAINTS[5],
-    ])
-    .split(area);
+    let header_layout = unit_header_areas(area);
 
     let search_area = header_layout[0];
     let type_area = header_layout[1];
@@ -51,6 +43,20 @@ pub fn draw_unit_header(
         enablement_area,
         load_area,
     )
+}
+
+pub fn unit_header_areas(area: Rect) -> [Rect; 6] {
+    let areas = Layout::horizontal([
+        Constraint::Percentage(30),
+        UNIT_COLUMN_CONSTRAINTS[1],
+        UNIT_COLUMN_CONSTRAINTS[2],
+        UNIT_COLUMN_CONSTRAINTS[3],
+        UNIT_COLUMN_CONSTRAINTS[4],
+        UNIT_COLUMN_CONSTRAINTS[5],
+    ])
+    .split(area);
+
+    [areas[0], areas[1], areas[2], areas[3], areas[4], areas[5]]
 }
 
 fn draw_search_segment(frame: &mut Frame, app: &App, area: Rect) {
@@ -244,25 +250,7 @@ pub fn render_filter_menu(
     list_area: Rect,
 ) {
     let options = app.filter_menu_options(menu);
-    let content_width = options
-        .iter()
-        .map(|option| option.label.len() + 9)
-        .max()
-        .unwrap_or(18) as u16;
-    let max_width = frame.area().width.saturating_sub(anchor.x).max(1);
-    let width = anchor.width.max(content_width + 2).min(max_width);
-    let y = anchor
-        .y
-        .saturating_add(anchor.height.saturating_sub(1))
-        .max(list_area.y);
-    let max_height = frame.area().height.saturating_sub(y).max(3);
-    let height = (options.len() as u16 + 2).min(max_height);
-    let area = Rect {
-        x: anchor.x,
-        y,
-        width,
-        height,
-    };
+    let area = filter_menu_area(frame.area(), anchor, list_area, &options);
 
     let items: Vec<ListItem> = options
         .into_iter()
@@ -293,6 +281,33 @@ pub fn render_filter_menu(
         ),
         area,
     );
+}
+
+pub fn filter_menu_area(
+    frame_area: Rect,
+    anchor: Rect,
+    list_area: Rect,
+    options: &[crate::app::state::context::FilterMenuOption],
+) -> Rect {
+    let content_width = options
+        .iter()
+        .map(|option| option.label.len() + 9)
+        .max()
+        .unwrap_or(18) as u16;
+    let max_width = frame_area.width.saturating_sub(anchor.x).max(1);
+    let width = anchor.width.max(content_width + 2).min(max_width);
+    let y = anchor
+        .y
+        .saturating_add(anchor.height.saturating_sub(1))
+        .max(list_area.y);
+    let max_height = frame_area.height.saturating_sub(y).max(3);
+    let height = (options.len() as u16 + 2).min(max_height);
+    Rect {
+        x: anchor.x,
+        y,
+        width,
+        height,
+    }
 }
 
 #[cfg(test)]
@@ -326,6 +341,7 @@ mod tests {
             load_state: UnitLoadState::Loaded,
             active_state: UnitActiveState::Active,
             enablement_state: UnitEnablementState::Enabled,
+            can_reload: true,
             sub_state: "running".to_string(),
             path: OwnedObjectPath::try_from("/test/unit/ssh").unwrap(),
             fragment_path: format!("/etc/systemd/system/{name}"),

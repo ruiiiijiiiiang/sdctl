@@ -1,6 +1,7 @@
 use std::io::{Result, Stdout, stdout};
 
 use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -20,7 +21,7 @@ impl Tui {
     pub fn enter() -> Result<Self> {
         enable_raw_mode()?;
         let mut stdout = stdout();
-        execute!(stdout, EnterAlternateScreen)?;
+        execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
         let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
         terminal.hide_cursor()?;
         terminal.clear()?;
@@ -32,7 +33,11 @@ impl Tui {
 
     pub fn exit(&mut self) -> Result<()> {
         if self.active {
-            execute!(self.terminal.backend_mut(), LeaveAlternateScreen)?;
+            execute!(
+                self.terminal.backend_mut(),
+                DisableMouseCapture,
+                LeaveAlternateScreen
+            )?;
             disable_raw_mode()?;
             self.terminal.show_cursor()?;
             self.active = false;
@@ -43,7 +48,11 @@ impl Tui {
     pub fn resume(&mut self) -> Result<()> {
         if !self.active {
             enable_raw_mode()?;
-            execute!(self.terminal.backend_mut(), EnterAlternateScreen)?;
+            execute!(
+                self.terminal.backend_mut(),
+                EnterAlternateScreen,
+                EnableMouseCapture
+            )?;
             self.terminal.hide_cursor()?;
             self.terminal.clear()?;
             self.active = true;
@@ -53,7 +62,12 @@ impl Tui {
 
     pub fn exit_terminal() -> Result<()> {
         disable_raw_mode()?;
-        execute!(stdout(), LeaveAlternateScreen, crossterm::cursor::Show)?;
+        execute!(
+            stdout(),
+            DisableMouseCapture,
+            LeaveAlternateScreen,
+            crossterm::cursor::Show
+        )?;
         Ok(())
     }
 }

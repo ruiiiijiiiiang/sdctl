@@ -6,7 +6,10 @@ use std::{
 
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::models::{AttemptResult, UnitEditMode, UnitScope};
+use crate::{
+    models::{AttemptResult, UnitEditMode, UnitScope},
+    systemd::dbus::clear_unit_metadata_cache,
+};
 
 const DEFAULT_DROP_IN: &str = "override.conf";
 
@@ -81,6 +84,7 @@ async fn perform_unit_edit_inner(
         .map_err(|e| Error::other(format!("Edit command failed to wait: {e}")))?;
 
     if output.status.success() {
+        clear_unit_metadata_cache();
         Ok(AttemptResult {
             success: true,
             error: None,

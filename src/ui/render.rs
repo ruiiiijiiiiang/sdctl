@@ -36,16 +36,22 @@ pub fn render_scrollbar(frame: &mut Frame, area: Rect, position: usize, content_
     );
 }
 
-pub fn draw(frame: &mut Frame, app: &mut App) {
-    let area = frame.area();
-    app.terminal_size = (area.width, area.height);
-
-    let main_layout = Layout::vertical([
+pub fn main_layout(area: Rect) -> [Rect; 3] {
+    let areas = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(10),
         Constraint::Length(6),
     ])
-    .split(frame.area());
+    .split(area);
+
+    [areas[0], areas[1], areas[2]]
+}
+
+pub fn draw(frame: &mut Frame, app: &mut App) {
+    let area = frame.area();
+    app.terminal_size = (area.width, area.height);
+
+    let main_layout = main_layout(area);
 
     app.main_content_height = main_layout[1].height.saturating_sub(2);
 

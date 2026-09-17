@@ -42,8 +42,10 @@ type UnitFileState = (String, String);
 type UnitFileChange = (String, String, String);
 type UnitFileChanges = Vec<UnitFileChange>;
 type EnablementCacheMap = HashMap<(String, String), EnablementInfo>;
+type CanReloadCacheMap = HashMap<(String, String), bool>;
 
 static ENABLEMENT_STATE_CACHE: OnceLock<Mutex<EnablementCacheMap>> = OnceLock::new();
+static CAN_RELOAD_CACHE: OnceLock<Mutex<CanReloadCacheMap>> = OnceLock::new();
 
 #[proxy(
     interface = "org.freedesktop.systemd1.Manager",
@@ -111,6 +113,8 @@ trait SystemdUnit {
     #[zbus(property)]
     fn sub_state(&self) -> ZbusResult<String>;
     #[zbus(property)]
+    fn can_reload(&self) -> ZbusResult<bool>;
+    #[zbus(property)]
     fn fragment_path(&self) -> ZbusResult<String>;
 }
 
@@ -169,46 +173,15 @@ async fn fetch_units_from_scope(scope: &str) -> Result<Vec<UnitInfo>> {
     );
 
     let scope_name = scope.to_string();
-    let mut units = Vec::with_capacity(units_raw.len());
-    let mut unresolved_units = Vec::new();
-
-    for unit in units_raw {
-        if let Some(info) =
-            resolve_cached_enablement_state(&scope_name, &unit.name, &unit_file_states)
-        {
-            let scope = scope_name.parse::<UnitScope>().unwrap_or(UnitScope::Global);
-            units.push(UnitInfo {
-                name: unit.name,
-                description: unit.description,
-                scope,
-                load_state: unit
-                    .load_state
-                    .parse::<UnitLoadState>()
-                    .unwrap_or(UnitLoadState::Unknown),
-                active_state: unit
-                    .active_state
-                    .parse::<UnitActiveState>()
-                    .unwrap_or(UnitActiveState::Unknown),
-                enablement_state: info
-                    .state
-                    .parse::<UnitEnablementState>()
-                    .unwrap_or(UnitEnablementState::Unknown),
-                sub_state: unit.sub_state,
-                path: unit.path,
-                fragment_path: info.path,
-            });
-        } else {
-            unresolved_units.push(unit);
-        }
-    }
-
-    let resolved_units = stream::iter(unresolved_units.into_iter().map(|unit| {
+    let units = stream::iter(units_raw.into_iter().map(|unit| {
         let manager = &manager;
         let unit_file_states = &unit_file_states;
+        let connection = &connection;
         let scope = scope_name.clone();
         async move {
             let info =
                 resolve_enablement_state(manager, &scope, &unit.name, unit_file_states).await;
+            let can_reload = resolve_can_reload(&scope, &unit.name, connection, &unit.path).await;
             let scope = scope.parse::<UnitScope>().unwrap_or(UnitScope::Global);
             UnitInfo {
                 name: unit.name,
@@ -226,6 +199,7 @@ async fn fetch_units_from_scope(scope: &str) -> Result<Vec<UnitInfo>> {
                     .state
                     .parse::<UnitEnablementState>()
                     .unwrap_or(UnitEnablementState::Unknown),
+                can_reload,
                 sub_state: unit.sub_state,
                 path: unit.path,
                 fragment_path: info.path,
@@ -236,9 +210,34 @@ async fn fetch_units_from_scope(scope: &str) -> Result<Vec<UnitInfo>> {
     .collect::<Vec<_>>()
     .await;
 
-    units.extend(resolved_units);
-
     Ok(units)
+}
+
+async fn unit_can_reload(connection: &Connection, unit_path: &OwnedObjectPath) -> bool {
+    let Ok(builder) = SystemdUnitProxy::builder(connection).path(unit_path.clone()) else {
+        return false;
+    };
+
+    let Ok(unit) = builder.build().await else {
+        return false;
+    };
+
+    unit.can_reload().await.unwrap_or(false)
+}
+
+async fn resolve_can_reload(
+    scope: &str,
+    unit_name: &str,
+    connection: &Connection,
+    unit_path: &OwnedObjectPath,
+) -> bool {
+    if let Some(can_reload) = get_cached_can_reload(scope, unit_name) {
+        return can_reload;
+    }
+
+    let can_reload = unit_can_reload(connection, unit_path).await;
+    cache_can_reload(scope, unit_name, can_reload);
+    can_reload
 }
 
 pub async fn perform_unit_action(
@@ -311,7 +310,7 @@ async fn run_dbus_unit_action(
     }
 
     if invalidate_enablement_cache {
-        clear_enablement_state_cache();
+        clear_unit_metadata_cache();
     }
 
     Ok(AttemptResult {
@@ -420,6 +419,38 @@ fn clear_enablement_state_cache() {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     cache.clear();
+}
+
+fn can_reload_cache() -> &'static Mutex<CanReloadCacheMap> {
+    CAN_RELOAD_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn cache_can_reload(scope: &str, unit_name: &str, can_reload: bool) {
+    let mut cache = can_reload_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    cache.insert((scope.to_string(), unit_name.to_string()), can_reload);
+}
+
+fn get_cached_can_reload(scope: &str, unit_name: &str) -> Option<bool> {
+    let cache = can_reload_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    cache
+        .get(&(scope.to_string(), unit_name.to_string()))
+        .copied()
+}
+
+fn clear_can_reload_cache() {
+    let mut cache = can_reload_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    cache.clear();
+}
+
+pub fn clear_unit_metadata_cache() {
+    clear_enablement_state_cache();
+    clear_can_reload_cache();
 }
 
 #[cfg(test)]

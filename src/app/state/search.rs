@@ -22,6 +22,10 @@ impl SearchState {
         self.cursor = self.query.chars().count();
     }
 
+    pub fn blur(&mut self) {
+        self.is_active = false;
+    }
+
     pub fn clear(&mut self) {
         self.is_active = false;
         self.query.clear();
@@ -144,6 +148,7 @@ mod tests {
             load_state,
             active_state,
             enablement_state,
+            can_reload: false,
             sub_state: active_state.to_string(),
             path: OwnedObjectPath::try_from(path).unwrap(),
             fragment_path: format!("/etc/systemd/system/{name}"),

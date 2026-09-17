@@ -29,6 +29,7 @@ pub async fn run_app() -> Result<()> {
             maybe_event = reader.next().fuse() => {
                 match maybe_event {
                     Some(Ok(Event::Resize(c, r))) => app.resize_embedded_auth(c, r)?,
+                    Some(Ok(Event::Mouse(mouse))) => app.handle_mouse(mouse).await?,
                     Some(Ok(Event::Key(key))) if key.kind == KeyEventKind::Press
                         && app.handle_key(key).await? => {
                             if let Some(action) = app.pending_action.take() {

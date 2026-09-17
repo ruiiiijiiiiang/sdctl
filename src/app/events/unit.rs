@@ -111,6 +111,7 @@ mod tests {
             load_state: UnitLoadState::Loaded,
             active_state: UnitActiveState::Active,
             enablement_state: UnitEnablementState::Enabled,
+            can_reload: true,
             sub_state: "running".to_string(),
             path: OwnedObjectPath::try_from("/test/unit/ssh").unwrap(),
             fragment_path: "/etc/systemd/system/ssh.service".to_string(),
